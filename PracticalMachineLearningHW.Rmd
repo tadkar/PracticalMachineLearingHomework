@@ -1,0 +1,40 @@
+Human Activity prediction coursework task
+========================================================
+
+The task was to design a model to predict the acitivity being carried out based on sensor data from Human activity trackers. A quick inspection of the data showed that the raw sensor data was fully populated, while calculated values (which by definition are perfectly correlated with some combination of the sensor data, not necessarily linear) contained missing values. The data was first cleaned by removing any column that contained missing values. The first 7 columns (X,username, 3 timestamps, 2 window variables) were not sensor data and were dropped too.
+
+```{r}
+library(caret)
+RawTrainData <- read.csv("~/Downloads/pml-training.csv",na.strings=c("NA",""))
+missingVals<-apply(RawTrainData,2, function (x) {sum (is.na(x))})
+tr1<-RawTrainData[,missingVals==0]
+trainDataFull<-tr1[,-(1:7)]
+inTrain<-createDataPartition(y=trainDataFull$classe,p=0.7,list=FALSE)
+trainData<-trainDataFull[inTrain,]
+cvData<-trainDataFull[-inTrain,]
+```
+### The model
+Random Forests were used because of a combination of ease of training and high accuracy. The data was split 70-30 train and CV. The performance on the cross validation set was used as a measure of the expected out of sample error.
+```{r}
+model<-train(trainData[,-53],trainData$classe,method="rf",trControl=trainControl(method="oob",number=4,allowParallel=TRUE))
+model
+```
+
+#### Cross Validation
+An estimate of the out-of-sample error.
+```{r}
+cvAns<-predict(model,cvData[,-53])
+numCorrect<-sum(cvAns==cvData[,53])
+1-numCorrect/length(cvAns)
+```
+
+### Prediction Code
+```{r}
+pmlTest <- read.csv("~/Downloads/pml-testing.csv", na.strings=c("NA",""))
+testData<-pmlTest[,names(pmlTest)%in%names(trainDataFull)]
+answers<-predict(model,testData)
+answers
+```
+
+
+
